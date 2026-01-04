@@ -29,6 +29,8 @@ def create_app():
     from app.activite import bp as activite_bp
     from app.kiosk import bp as kiosk_bp
     from app.statsimpact.routes import bp as statsimpact_bp
+    from app.inventaire.routes import bp as inventaire_bp
+    from app.inventaire_materiel.routes import bp as inventaire_materiel_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -38,6 +40,8 @@ def create_app():
     app.register_blueprint(activite_bp)
     app.register_blueprint(kiosk_bp)
     app.register_blueprint(statsimpact_bp)
+    app.register_blueprint(inventaire_bp)
+    app.register_blueprint(inventaire_materiel_bp)
 
 
     def ensure_schema():
@@ -130,6 +134,17 @@ def create_app():
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_presence_session_participant ON presence_activite(session_id, participant_id)"
             ))
             db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # 7) Finance : dépense liée à une ligne de facture (inventaire)
+        try:
+            cols_dep = [row[1] for row in db.session.execute(text("PRAGMA table_info(depense)")).all()]
+            if "facture_ligne_id" not in cols_dep:
+                db.session.execute(text(
+                    "ALTER TABLE depense ADD COLUMN facture_ligne_id INTEGER REFERENCES facture_ligne(id)"
+                ))
+                db.session.commit()
         except Exception:
             db.session.rollback()
     with app.app_context():
