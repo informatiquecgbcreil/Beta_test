@@ -323,6 +323,7 @@
             <a class="pill {% if ep.startswith('budget.depense_new') %}active{% endif %}" href="{{ url_for('budget.depense_new') }}">Nouvelle dépense</a>
 			<a class="pill {% if ep.startswith('budget.depenses_list') %}active{% endif %}" href="{{ url_for('budget.depenses_list') }}">Dépenses</a>
             <a class="pill {% if ep.startswith('projets.') %}active{% endif %}" href="{{ url_for('projets.projets_list') }}">Projets</a>
+            <a class="pill {% if ep.startswith('inventaire_materiel.') %}active{% endif %}" href="{{ url_for('inventaire_materiel.list_items') }}">Inventaire</a>
             <a class="pill {% if ep.startswith('activite.') %}active{% endif %}" href="{{ url_for('activite.index') }}">Émargement</a>
 			<a class="pill {% if ep.startswith('main.bilan_global') %}active{% endif %}" href="{{ url_for('main.bilan_global') }}">Bilan</a>
             <a class="pill {% if ep.startswith('main.stats') %}active{% endif %}" href="{{ url_for('main.stats') }}">Stats</a>
