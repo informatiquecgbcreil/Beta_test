@@ -104,6 +104,101 @@
 
     </div>
   </div>
+
+  <div class="card">
+    <h2>Inventaire (optionnel)</h2>
+    <p class="muted">Associer cette dépense à une entrée d'inventaire existante ou créer une nouvelle fiche matériel.</p>
+
+    {% if inventaire_items %}
+      <div class="tablewrap" style="margin-bottom:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>ID interne</th>
+              <th>Désignation</th>
+              <th>État</th>
+              <th>Localisation</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in inventaire_items %}
+              <tr>
+                <td><strong>{{ it.id_interne }}</strong></td>
+                <td>{{ it.designation }}</td>
+                <td><span class="badge">{{ it.etat }}</span></td>
+                <td>{{ it.localisation or "—" }}</td>
+                <td style="text-align:right">
+                  <a class="btn" href="{{ url_for('inventaire_materiel.edit_item', item_id=it.id) }}">Ouvrir</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('inventaire_materiel.create_from_depense', depense_id=dep.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="grid two">
+        <div>
+          <label>Secteur</label>
+          <input name="secteur" value="{{ inventaire_secteur }}" {% if current_user.role == 'responsable_secteur' %}readonly{% endif %}>
+        </div>
+        <div>
+          <label>Date d’entrée</label>
+          <input type="date" name="date_entree" value="{{ dep.date_paiement or '' }}">
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div>
+          <label>Désignation</label>
+          <input name="designation" placeholder="Ex: Ordinateur portable" value="{{ dep.libelle }}" required>
+        </div>
+        <div class="grid two" style="grid-template-columns:1fr 1fr; gap:10px">
+          <div>
+            <label>Quantité</label>
+            <input type="number" name="quantite" min="1" value="1">
+          </div>
+          <div>
+            <label>État</label>
+            <select name="etat">
+              {% for v in ["OK","A réparer","HS","Donné"] %}
+                <option value="{{ v }}">{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div>
+          <label>Catégorie (optionnel)</label>
+          <input name="categorie" placeholder="Informatique / Mobilier...">
+        </div>
+        <div>
+          <label>Localisation</label>
+          <input name="localisation" placeholder="Salle, bureau...">
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div>
+          <label>Valeur unitaire (€)</label>
+          <input type="number" step="0.01" name="valeur_unitaire" value="{{ dep.montant or '' }}">
+        </div>
+        <div>
+          <label>Notes</label>
+          <input name="notes" placeholder="Garantie, prêt, contexte...">
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+      <button class="btn ok" type="submit">📦 Créer une entrée inventaire</button>
+    </form>
+  </div>
 </div>
 
 {% endblock %}

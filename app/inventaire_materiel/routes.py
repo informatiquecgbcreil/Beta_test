@@ -326,3 +326,83 @@ def create_bulk_from_facture_ligne(ligne_id: int):
     flash(f"{len(created_ids)} items inventaire créés (unitaires).", "ok")
     # Redirige vers la liste (tri récent) : l'utilisateur peut filtrer ensuite
     return redirect(url_for("inventaire_materiel.list_items"))
+
+
+@bp.route("/from_depense/<int:depense_id>", methods=["POST"])
+@login_required
+def create_from_depense(depense_id: int):
+    """Créer une entrée inventaire depuis une dépense (non liée à une facture)."""
+    if current_user.role == "admin_tech":
+        abort(403)
+
+    dep = Depense.query.get_or_404(depense_id)
+    ligne = dep.budget_source
+    sub = ligne.source_sub if ligne else None
+    secteur_dep = getattr(sub, "secteur", None)
+
+    if secteur_dep and not can_see_secteur(secteur_dep):
+        abort(403)
+
+    secteur = (request.form.get("secteur") or secteur_dep or "").strip()
+    if not secteur:
+        flash("Secteur manquant pour l'inventaire.", "danger")
+        return redirect(url_for("budget.depense_edit", depense_id=dep.id))
+
+    if not can_see_secteur(secteur):
+        abort(403)
+
+    designation = (request.form.get("designation") or dep.libelle or "").strip()
+    if not designation:
+        flash("Désignation obligatoire pour l'inventaire.", "danger")
+        return redirect(url_for("budget.depense_edit", depense_id=dep.id))
+
+    categorie = (request.form.get("categorie") or "").strip() or None
+    etat = (request.form.get("etat") or "OK").strip() or "OK"
+    localisation = (request.form.get("localisation") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+
+    try:
+        quantite = int(request.form.get("quantite") or 1)
+    except Exception:
+        quantite = 1
+    if quantite < 1:
+        quantite = 1
+
+    valeur_unitaire = request.form.get("valeur_unitaire")
+    try:
+        valeur_unitaire = float(valeur_unitaire) if valeur_unitaire not in (None, "") else None
+    except Exception:
+        valeur_unitaire = None
+
+    date_entree_raw = (request.form.get("date_entree") or "").strip()
+    date_entree = None
+    if date_entree_raw:
+        try:
+            date_entree = datetime.strptime(date_entree_raw, "%Y-%m-%d").date()
+        except Exception:
+            date_entree = None
+    if not date_entree:
+        date_entree = dep.date_paiement or datetime.utcnow().date()
+
+    id_interne = _next_id_interne(secteur, date_entree)
+
+    item = InventaireItem(
+        secteur=secteur,
+        id_interne=id_interne,
+        categorie=categorie,
+        designation=designation,
+        etat=etat,
+        localisation=localisation,
+        quantite=quantite,
+        valeur_unitaire=valeur_unitaire,
+        date_entree=date_entree,
+        depense_id=dep.id,
+        facture_ligne_id=getattr(dep, "facture_ligne_id", None),
+        created_by=getattr(current_user, "id", None),
+        notes=notes,
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    flash("Entrée inventaire créée depuis la dépense.", "ok")
+    return redirect(url_for("budget.depense_edit", depense_id=dep.id))

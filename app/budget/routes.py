@@ -147,6 +147,7 @@ def depense_edit(depense_id):
     alloue = float(ligne.montant_reel or 0)
     engage = float(ligne.engage or 0)
     reste = float(ligne.reste or 0)
+    existing_inv = list(getattr(dep, "inventaire_items", []) or [])
 
     return render_template(
         "depense_edit.html",
@@ -155,7 +156,9 @@ def depense_edit(depense_id):
         sub=sub,
         alloue=alloue,
         engage=engage,
-        reste=reste
+        reste=reste,
+        inventaire_items=existing_inv,
+        inventaire_secteur=sub.secteur,
     )
 
 # ✅ NOUVEL ENDPOINT : suppression dépense (fiable)
@@ -273,6 +276,5 @@ def depenses_list():
         selected_ligne_id=ligne_id,
         deps=deps,
     )
-
 
 

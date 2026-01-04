@@ -172,6 +172,9 @@ class Depense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ligne_budget_id = db.Column(db.Integer, db.ForeignKey("ligne_budget.id"), nullable=False)
 
+    # Provenance facture / inventaire
+    facture_ligne_id = db.Column(db.Integer, db.ForeignKey("facture_ligne.id", ondelete="SET NULL"), nullable=True)
+
     libelle = db.Column(db.String(255), nullable=False)
     montant = db.Column(db.Float, default=0.0)
 
@@ -191,6 +194,7 @@ class Depense(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     documents = db.relationship("DepenseDocument", backref="depense", cascade="all, delete-orphan")
+    inventaire_items = db.relationship("InventaireItem", backref="depense", passive_deletes=True)
 
 
 class DepenseDocument(db.Model):
@@ -201,6 +205,81 @@ class DepenseDocument(db.Model):
     original_name = db.Column(db.String(255), nullable=False)
 
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------- FACTURES / INVENTAIRE ----------
+class FactureAchat(db.Model):
+    __tablename__ = "facture_achat"
+
+    id = db.Column(db.Integer, primary_key=True)
+    secteur_principal = db.Column(db.String(80), nullable=False)
+    fournisseur = db.Column(db.String(180), nullable=True)
+    reference_facture = db.Column(db.String(120), nullable=True)
+    date_facture = db.Column(db.Date, nullable=True)
+
+    statut = db.Column(db.String(30), nullable=False, default="brouillon")  # brouillon / valide
+
+    filename = db.Column(db.String(255), nullable=True)
+    original_name = db.Column(db.String(255), nullable=True)
+
+    created_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lignes = db.relationship("FactureLigne", backref="facture", cascade="all, delete-orphan")
+
+    @property
+    def total(self):
+        return round(sum(float(l.montant_ligne or 0) for l in self.lignes), 2)
+
+
+class FactureLigne(db.Model):
+    __tablename__ = "facture_ligne"
+
+    id = db.Column(db.Integer, primary_key=True)
+    facture_id = db.Column(db.Integer, db.ForeignKey("facture_achat.id"), nullable=False)
+    secteur = db.Column(db.String(80), nullable=False)
+
+    financement_type = db.Column(db.String(30), nullable=False, default="subvention")  # subvention / fonds_propres / don / autre
+    a_ventiler = db.Column(db.Boolean, default=False)
+
+    libelle = db.Column(db.String(255), nullable=False)
+    quantite = db.Column(db.Integer, nullable=False, default=1)
+    prix_unitaire = db.Column(db.Float, default=0.0)
+    montant_ligne = db.Column(db.Float, default=0.0)
+
+    ligne_budget_id = db.Column(db.Integer, db.ForeignKey("ligne_budget.id"), nullable=False)
+    subvention_id = db.Column(db.Integer, db.ForeignKey("subvention.id"), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    depenses = db.relationship("Depense", backref="facture_ligne", passive_deletes=True)
+    inventaire_items = db.relationship("InventaireItem", backref="facture_ligne", passive_deletes=True)
+
+
+class InventaireItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    secteur = db.Column(db.String(80), nullable=False)
+    id_interne = db.Column(db.String(64), nullable=False, unique=True)
+
+    categorie = db.Column(db.String(120), nullable=True)
+    designation = db.Column(db.String(255), nullable=False)
+    marque = db.Column(db.String(120), nullable=True)
+    modele = db.Column(db.String(120), nullable=True)
+
+    quantite = db.Column(db.Integer, nullable=False, default=1)
+    numero_serie = db.Column(db.String(180), nullable=True)
+    etat = db.Column(db.String(50), nullable=False, default="OK")
+    localisation = db.Column(db.String(255), nullable=True)
+
+    valeur_unitaire = db.Column(db.Float, nullable=True)
+    date_entree = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    facture_ligne_id = db.Column(db.Integer, db.ForeignKey("facture_ligne.id", ondelete="SET NULL"), nullable=True)
+    depense_id = db.Column(db.Integer, db.ForeignKey("depense.id", ondelete="SET NULL"), nullable=True)
+
+    created_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ==========================================================
